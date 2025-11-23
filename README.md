@@ -52,3 +52,22 @@ klinic is a multi-role klinic platform with three distinct user categories:
 - `Manage Patients` - Patient account administration
 - `Statistics` - Platform analytics and insights
 - `My Profile` - Administrator profile settings
+
+## Purpose
+
+- Handles form submissions with server actions
+- Manages form state (pending, errors, success)
+- Provides progressive enhancement
+
+## Key Features
+
+- **State Management**: Tracks form submission state
+- **Pending State**: Shows loading during submission
+- **Error Handling**: Displays validation and server errors
+- **Form Reset**: Automatically manages form reset after submission
+
+## Implementation
+
+```typescript
+const [state, formAction, isPending] = useActionState(serverAction, initialState);
+```
