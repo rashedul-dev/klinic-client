@@ -6,9 +6,11 @@ const CommonLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       <ThemeProvider defaultTheme="light" storageKey="klinic-theme">
-        <Navbar />
-        {children}
-        <Footer />
+        <div className="flex min-h-screen flex-col">
+          <Navbar />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </div>
       </ThemeProvider>
     </>
   );
