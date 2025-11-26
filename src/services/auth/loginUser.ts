@@ -1,9 +1,12 @@
 "use server";
 
 import { parse } from "cookie";
+import { JwtPayload } from "jsonwebtoken";
 import { cookies } from "next/headers";
-import z from "zod";
-import { fi } from "zod/locales";
+import jwt from "jsonwebtoken";
+import { z } from "zod";
+import { getDefaultDashboardRoute, isValidRedirectForRole, UserRole } from "@/lib/auth-utils";
+import { redirect } from "next/navigation";
 
 const loginValidationZodSchema = z.object({
   email: z.string().min(1, { message: "Email is required" }).email({ message: "Invalid email address" }),
@@ -15,10 +18,11 @@ const loginValidationZodSchema = z.object({
 });
 
 export const loginUser = async (_currentState: any, formData: FormData): Promise<any> => {
-  let accessTokenObject: null | any = null;
-  let refreshTokenObject: null | any = null;
-
   try {
+    const redirectTo = formData.get("redirect") || null;
+    let accessTokenObject: null | any = null;
+    let refreshTokenObject: null | any = null;
+
     const loginData = {
       email: formData.get("email"),
       password: formData.get("password"),
@@ -41,10 +45,10 @@ export const loginUser = async (_currentState: any, formData: FormData): Promise
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_FRONTEND_URL}/auth/login`, {
       method: "POST",
+      body: JSON.stringify(loginData), // Stringify the object
       headers: {
         "Content-Type": "application/json", // Send as JSON
       },
-      body: JSON.stringify(loginData), // Stringify the object
     });
 
     // JSON response body - contain user data and tokens
@@ -76,26 +80,54 @@ export const loginUser = async (_currentState: any, formData: FormData): Promise
 
     cookieStore.set("accessToken", accessTokenObject.accessToken, {
       httpOnly: true,
-      maxAge: parseInt(accessTokenObject.maxAge) || 1000 * 60 * 60,
+      maxAge: parseInt(accessTokenObject["maxAge"]) || 1000 * 60 * 60,
       path: accessTokenObject.path || "/",
       secure: true,
-      sameSite: accessTokenObject.sameSite || "none",
+      sameSite: accessTokenObject["sameSite"] || "none",
     });
 
     // Set access token on the server side cookie store
     cookieStore.set("refreshToken", refreshTokenObject.refreshToken, {
       httpOnly: true,
-      maxAge: parseInt(refreshTokenObject.maxAge) || 1000 * 60 * 60 * 24 * 90,
+      maxAge: parseInt(refreshTokenObject["maxAge"]) || 1000 * 60 * 60 * 24 * 90,
       path: refreshTokenObject.path || "/",
       secure: true,
-      sameSite: refreshTokenObject.sameSite || "none",
+      sameSite: refreshTokenObject["sameSite"] || "none",
     });
 
     console.log({ res, result });
 
-    // return the JSON response so that req can handle redirection or other logic
-    return result;
-  } catch (error) {
+    const verifiedToken: JwtPayload | string = jwt.verify(
+      accessTokenObject.accessToken,
+      process.env.JWT_SECRET as string
+    );
+    console.log("Verified Token:", verifiedToken);
+
+    if (typeof verifiedToken === "string") {
+      throw new Error("Invalid Token");
+    }
+
+    const userRole: UserRole = verifiedToken.role as UserRole;
+
+    if (!result.success) {
+      throw new Error(result.message || "Login Failed");
+    }
+
+    if (redirectTo) {
+      const requestedPath = redirectTo.toString();
+      if (isValidRedirectForRole(requestedPath, userRole)) {
+        redirect(requestedPath);
+      } else {
+        redirect(getDefaultDashboardRoute(userRole));
+      }
+    } else {
+      redirect(getDefaultDashboardRoute(userRole));
+    }
+  } catch (error: any) {
+    // Re-throw NEXT_REDIRECT errors so Next.js can handle them this is because of when we use redirect in a try catch
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
     console.log("Login Error", error);
     return {
       error: "Login Failed",
