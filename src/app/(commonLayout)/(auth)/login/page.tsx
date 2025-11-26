@@ -3,7 +3,8 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Activity, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-export default function LoginPage() {
+const LoginPage = async ({ searchParams }: { searchParams?: Promise<{ redirect?: string }> }) => {
+  const params = (await searchParams) || {};
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden p-4">
       {/* Background decorative elements */}
@@ -27,8 +28,9 @@ export default function LoginPage() {
           <CardTitle className="text-2xl font-bold tracking-tight">Welcome back</CardTitle>
           <CardDescription>Enter your credentials to access your account</CardDescription>
         </CardHeader>
-        <LoginForm />
+        <LoginForm redirect={params.redirect} />
       </Card>
     </div>
   );
-}
+};
+export default LoginPage;
