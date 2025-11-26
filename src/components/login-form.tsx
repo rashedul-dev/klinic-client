@@ -8,7 +8,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { loginUser } from "@/services/auth/loginUser";
 
-const LoginForm = () => {
+const LoginForm = ({ redirect }: { redirect?: string }) => {
   const [state, formAction, isPending] = useActionState(loginUser, null);
 
   const getFieldError = (fieldName: string) => {
@@ -25,6 +25,7 @@ const LoginForm = () => {
   return (
     <div>
       <form action={formAction}>
+        {redirect && <input type="hidden" name="redirect" value={redirect} />}
         <CardContent className="grid gap-4">
           <div className="grid grid-cols-2 gap-4">
             <Button variant="outline" type="button">
@@ -63,14 +64,26 @@ const LoginForm = () => {
           <div className="grid gap-2">
             <Field>
               <FieldLabel htmlFor="email">Email</FieldLabel>
-              <Input id="email" name="email" type="email" placeholder="user@example.com" />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="user@example.com"
+                defaultValue={"doctor@gmail.com"}
+              />
               {getFieldError("email") && <p className="text-sm text-red-500 mt-1">{getFieldError("email")}</p>}
             </Field>
           </div>
           <div className="grid gap-2">
             <Field>
               <FieldLabel htmlFor="password">Password</FieldLabel>
-              <Input id="password" name="password" type="password" placeholder="Enter your password" />
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Enter your password"
+                defaultValue={"doctor123"}
+              />
               {getFieldError("password") && <p className="text-sm text-red-500 mt-1">{getFieldError("password")}</p>}
             </Field>
           </div>
