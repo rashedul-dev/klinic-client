@@ -4,9 +4,10 @@ import { parse } from "cookie";
 import { JwtPayload } from "jsonwebtoken";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
-import { z } from "zod";
+import { success, z } from "zod";
 import { getDefaultDashboardRoute, isValidRedirectForRole, UserRole } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
+import { setCookie } from "./tokenhandler";
 
 const loginValidationZodSchema = z.object({
   email: z.string().min(1, { message: "Email is required" }).email({ message: "Invalid email address" }),
@@ -68,7 +69,7 @@ export const loginUser = async (_currentState: any, formData: FormData): Promise
       });
     } else {
       // No Cookie on Headres
-      throw new Error("No set-cookie header found");
+      throw new Error("Invalid credentials. Please try again.");
     }
 
     // Check both token exist
@@ -76,9 +77,26 @@ export const loginUser = async (_currentState: any, formData: FormData): Promise
       throw new Error("Token not Found");
     }
 
-    const cookieStore = await cookies();
+    // const cookieStore = await cookies();
 
-    cookieStore.set("accessToken", accessTokenObject.accessToken, {
+    // cookieStore.set("accessToken", accessTokenObject.accessToken, {
+    //   httpOnly: true,
+    //   maxAge: parseInt(accessTokenObject["maxAge"]) || 1000 * 60 * 60,
+    //   path: accessTokenObject.path || "/",
+    //   secure: true,
+    //   sameSite: accessTokenObject["sameSite"] || "none",
+    // });
+
+    // // Set access token on the server side cookie store
+    // cookieStore.set("refreshToken", refreshTokenObject.refreshToken, {
+    //   httpOnly: true,
+    //   maxAge: parseInt(refreshTokenObject["maxAge"]) || 1000 * 60 * 60 * 24 * 90,
+    //   path: refreshTokenObject.path || "/",
+    //   secure: true,
+    //   sameSite: refreshTokenObject["sameSite"] || "none",
+    // });
+
+    await setCookie("accessToken", accessTokenObject.accessToken, {
       httpOnly: true,
       maxAge: parseInt(accessTokenObject["maxAge"]) || 1000 * 60 * 60,
       path: accessTokenObject.path || "/",
@@ -87,7 +105,7 @@ export const loginUser = async (_currentState: any, formData: FormData): Promise
     });
 
     // Set access token on the server side cookie store
-    cookieStore.set("refreshToken", refreshTokenObject.refreshToken, {
+    await setCookie("refreshToken", refreshTokenObject.refreshToken, {
       httpOnly: true,
       maxAge: parseInt(refreshTokenObject["maxAge"]) || 1000 * 60 * 60 * 24 * 90,
       path: refreshTokenObject.path || "/",
@@ -116,12 +134,12 @@ export const loginUser = async (_currentState: any, formData: FormData): Promise
     if (redirectTo) {
       const requestedPath = redirectTo.toString();
       if (isValidRedirectForRole(requestedPath, userRole)) {
-        redirect(requestedPath);
+        redirect(`${requestedPath}?loggedIn=true`);
       } else {
-        redirect(getDefaultDashboardRoute(userRole));
+        redirect(`${getDefaultDashboardRoute(userRole)}?loggedIn=true`);
       }
     } else {
-      redirect(getDefaultDashboardRoute(userRole));
+      redirect(`${getDefaultDashboardRoute(userRole)}?loggedIn=true`);
     }
   } catch (error: any) {
     // Re-throw NEXT_REDIRECT errors so Next.js can handle them this is because of when we use redirect in a try catch
@@ -130,7 +148,12 @@ export const loginUser = async (_currentState: any, formData: FormData): Promise
     }
     console.log("Login Error", error);
     return {
-      error: "Login Failed",
+      success: false,
+      message: `${
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "An error occurred during login. Please try again later."
+      }`,
     };
   }
 };

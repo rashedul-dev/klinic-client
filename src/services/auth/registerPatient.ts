@@ -1,6 +1,7 @@
 "use server";
 
 import z from "zod";
+import { loginUser } from "./loginUser";
 
 const registerValidationZodSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
@@ -18,7 +19,7 @@ export const registerPatinet = async (_currentState: any, formData: FormData): P
       email: formData.get("email"),
       password: formData.get("password"),
     };
-    
+
     const validatedFields = registerValidationZodSchema.safeParse(validatedData);
 
     if (!validatedFields.success) {
@@ -50,11 +51,20 @@ export const registerPatinet = async (_currentState: any, formData: FormData): P
       body: newFormData,
     });
 
-    const data = await res.json();
-    console.log(data, "res");
-    return data;
-  } catch (error) {
+    const result = await res.json();
+
+    // For auto login after registration
+    if (result.success) {
+      await loginUser(_currentState, formData);
+    }
+    console.log(result, "res");
+    return result;
+  } catch (error: any) {
     console.log("Patient Registering Error", error);
+
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
     return {
       error: "Patient Registering Failed",
     };
