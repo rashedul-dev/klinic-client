@@ -2,6 +2,7 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { getDefaultDashboardRoute, getRouteOwner, isAuthRoute, UserRole } from "./lib/auth-utils";
+import { deleteCookie } from "./services/auth/tokenhandler";
 
 // This function can be marked `async` if using `await` inside
 export async function proxy(request: NextRequest) {
@@ -27,21 +28,24 @@ export async function proxy(request: NextRequest) {
       console.log("Verified Token:", verifiedToken);
 
       if (typeof verifiedToken === "string") {
-        cookieStore.delete("accessToken");
-        cookieStore.delete("refreshToken");
+        // cookieStore.delete("accessToken");
+        // cookieStore.delete("refreshToken");
+        await deleteCookie("accessToken");
+        await deleteCookie("refreshToken");
+
         return NextResponse.redirect(new URL(`/login?redirect=${encodeURIComponent(pathname)}`, request.url));
       }
       userRole = verifiedToken.role;
     } catch (error) {
       console.log("Token verification failed:", error);
-      cookieStore.delete("accessToken");
-      cookieStore.delete("refreshToken");
+      await deleteCookie("accessToken");
+      await deleteCookie("refreshToken");
       return NextResponse.redirect(new URL(`/login?redirect=${encodeURIComponent(pathname)}`, request.url));
     }
   }
 
   const routeOwner = getRouteOwner(pathname);
-  const isAuth = isAuthRoute(pathname);
+  const isAuth = isAuthRoute(pathname); // return true for /login and /register routes
 
   /* Rule-Based Approach */
 

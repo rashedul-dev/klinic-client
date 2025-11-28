@@ -4,9 +4,10 @@ import { Button } from "./ui/button";
 import { CardContent, CardFooter } from "./ui/card";
 import { Input } from "./ui/input";
 import { Field, FieldLabel } from "./ui/field";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import Link from "next/link";
 import { loginUser } from "@/services/auth/loginUser";
+import { toast } from "sonner";
 
 const LoginForm = ({ redirect }: { redirect?: string }) => {
   const [state, formAction, isPending] = useActionState(loginUser, null);
@@ -20,7 +21,19 @@ const LoginForm = ({ redirect }: { redirect?: string }) => {
     }
   };
 
-  console.log("Login state:", state);
+  // useEffect(() => {
+  //   if (state && state.success) {
+  //     toast.success("Logged in successfully!");
+  //   } else if (state && state.errors && state.errors.length > 0) {
+  //     toast.error("Login failed. Please check your credentials.");
+  //   }
+  // }, [state]);
+
+  useEffect(() => {
+    if (state && !state.success && state.message) {
+      toast.error(state.message);
+    }
+  }, [state]);
 
   return (
     <div>
